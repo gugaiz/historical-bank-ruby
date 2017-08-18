@@ -17,7 +17,8 @@
 # frozen_string_literal: true
 
 require 'money'
-require 'money/rates_provider/open_exchange_rates'
+#require 'money/rates_provider/open_exchange_rates'
+require 'money/rates_provider/fixer'
 require 'money/rates_store/historical_redis'
 
 class Money
@@ -82,9 +83,11 @@ class Money
         @store = RatesStore::HistoricalRedis.new(@base_currency,
                                                  Historical.configuration.redis_url,
                                                  Historical.configuration.redis_namespace)
-        @provider = RatesProvider::OpenExchangeRates.new(Historical.configuration.oer_app_id,
-                                                         @base_currency,
-                                                         Historical.configuration.timeout)
+        #@provider = RatesProvider::OpenExchangeRates.new(Historical.configuration.oer_app_id,
+        #                                                @base_currency,
+        #                                                Historical.configuration.timeout)
+        @provider = RatesProvider::Fixer.new(@base_currency,Historical.configuration.timeout)
+        
         # for controlling access to @rates
         @mutex = Mutex.new
       end
@@ -284,7 +287,8 @@ class Money
       end
 
       def fetch_provider_base_rate(currency, date)
-        currency_date_rate_hash = @provider.fetch_month_rates(date)
+        #currency_date_rate_hash = @provider.fetch_month_rates(date)
+        currency_date_rate_hash = @provider.fetch_rates(date)
 
         date_rate_hash = currency_date_rate_hash[currency.iso_code]
         rate = date_rate_hash && date_rate_hash[date.iso8601]
