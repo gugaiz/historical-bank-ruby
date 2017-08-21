@@ -7,8 +7,8 @@
 
 This gem provides a bank that can serve historical rates,
 contrary to most bank implementations that provide only current market rates.
-[Open Exchange Rates](https://openexchangerates.org/) (OER) is used as the provider of the rates and an Enterprise or Unlimited plan is required.
-As the HTTP requests to OER can add latency to your calls, a `RatesStore` (cache) based on Redis was added, making it super-fast.
+[Fixer](http://fixer.io) is used as the provider of the rates. Fixer is based on EU Central Bank
+As the HTTP requests can add latency to your calls, a `RatesStore` (cache) based on Redis was added, making it super-fast.
 
 You can use it as your default bank and keep calling the standard `money` gem methods (`Money#exchange_to`, `Bank#exchange_with`). On top of that, we've added a few more methods that allow accessing historical rates (`Money#exchange_to_historical`, `Bank#exchange_with_historical`).
 
@@ -30,11 +30,11 @@ Default base currency is EUR, but it can be changed in the config.
 
 The timezone used throughout this gem is the UTC timezone.
 
-All processed rates (fetched from OER, added manually, cached in Redis) are considered to be the [closing (end of day) rates](https://openexchangerates.org/faq/#eod-values) for their associated dates in UTC.
+All processed rates (fetched from Fixer, added manually, cached in Redis) are considered to be the [closing (end of day) rates](https://openexchangerates.org/faq/#eod-values) for their associated dates in UTC.
 For example, when we have a cached rate of EUR->USD on January 10th 2017 with value 1.25,
 this means that 1 EUR was equivalent to 1.25 USD on January 10th at 23:59:59.
 This is the historical rate that the bank will use for exchanging EUR with USD on that date.
-Consequently, a rate for a certain `date` fetched from OER becomes available at 00:00 UTC on `date+1`.
+Consequently, a rate for a certain `date` fetched from Fixer becomes available at 00:00 UTC on `date+1`.
 
 For convenience, methods that accept `Date`s as arguments can accept `Time`s as well.
 When a `Time` is used, it is first converted into the UTC-equivalent `Date`,
@@ -64,9 +64,9 @@ bank.exchange_with_historical(from_money, to_currency, Date.new(2017, 1, 9))
 We've implemented 2 layers of caching in order to obliterate latency!
 First layer is memory (instance variable in the bank object), and second is Redis.
 If desired rate is not found in memory, the bank tries to look it up in Redis.
-If that fails too, a request to OER is made.
+If that fails too, a request to Fixer is made.
 
-When we fetch rates from OER, they are cached in Redis and memory too.
+When we fetch rates from Fixer, they are cached in Redis and memory too.
 Similarly, when the rate is found in Redis, it is again cached in memory.
 
 <p align="center">
@@ -113,9 +113,6 @@ Example scripts demonstrating all functionality can be found in [`examples/`](ex
 
 ```ruby
 Money::Bank::Historical.configure do |config|
-  # (required) your OpenExchangeRates App ID
-  config.oer_app_id = 'XXXXXXXXXXXXXXX'
-
   # (optional) currency relative to which all the rates are stored (default: EUR)
   config.base_currency = Money::Currency.new('USD')
 
@@ -125,7 +122,7 @@ Money::Bank::Historical.configure do |config|
   # (optional) Redis namespace to prefix all keys (default: 'currency')
   config.redis_namespace = 'currency_historical_gem'
 
-  # (optional) set a timeout for the OER calls (default: 15 seconds)
+  # (optional) set a timeout for the Fixer calls (default: 15 seconds)
   config.timeout = 20
 end
 ```
@@ -183,8 +180,6 @@ end
 
 The minimum date for which we can fetch rates is January 1st 1999.
 This [limitation](https://docs.openexchangerates.org/docs/api-introduction) is set by the OpenExchangeRates API.
-The maximum date for which we fetch OER rates is yesterday (in UTC),
-as [today's rates are not yet final](https://openexchangerates.org/faq/#timezone).
 
 However, if you want to overcome these limitations manually, you can add past (and even future!) rates using `Historical#add_rate` and `#add_rates`.
 
@@ -224,7 +219,7 @@ from_money.exchange_to(to_currency)
 
 ### Adding and retrieving rates
 
-Adding rates will not be needed in most cases as the rates are fetched from OER.
+Adding rates will not be needed in most cases as the rates are fetched from Fixer.
 However, `#add_rate` and `#get_rate` were implemented in order to conform to the Bank API.
 An extra `#add_rates` method was implemented for setting rates in bulk.
 
